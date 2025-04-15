@@ -138,11 +138,11 @@ def	benchmark(num_nodes, prob):
 	return {
 		"nodes"						: num_nodes,
 		"edges"						: edge_index.size(1) // 2,
-		"nx_conv_time"				: time_nx_conv,
-		"nx_raw_time"				: time_nx_raw,
-		"clas_time"					: time_clas,
-		"fast_time"					: time_fast,
-		"igraph_time"				: time_ig,
+		"nx_conv"					: time_nx_conv,
+		"nx_raw"					: time_nx_raw,
+		"classique"					: time_clas,
+		"fast"						: time_fast,
+		"igraph"					: time_ig,
 		"same_triangles_clas"		: torch.allclose(tri_nx_raw, tri_clas),
 		"same_clustering_clas"		: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
 		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
@@ -153,7 +153,7 @@ def	benchmark(num_nodes, prob):
 # --------- MAIN ---------
 if __name__ == "__main__":
 	results = []
-	sizes = [100, 500, 1000, 2000, 3000]
+	sizes = [100, 500, 1000, 2000, 3000, 5000]
 	prob = 0.01
 
 	for size in sizes:
@@ -163,11 +163,11 @@ if __name__ == "__main__":
 		results.append(res)
 
 	plt.figure(figsize=(10, 6))
-	plt.plot([r["nodes"] for r in results], [r["nx_conv_time"] for r in results], label="NetworkX (avec conversion)", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["nx_raw_time"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["clas_time"] for r in results], label="Classique", color="tab:red")
-	plt.plot([r["nodes"] for r in results], [r["fast_time"] for r in results], label="Fast", linestyle="--", color="tab:red")
-	plt.plot([r["nodes"] for r in results], [r["igraph_time"] for r in results], label="iGraph", linestyle=":", color="tab:green")
+	plt.plot([r["nodes"] for r in results], [r["nx_conv"] for r in results], label="NetworkX (avec conversion)", color="tab:blue")
+	plt.plot([r["nodes"] for r in results], [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:blue")
+	plt.plot([r["nodes"] for r in results], [r["classique"] for r in results], label="Classique", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["fast"] for r in results], label="Fast", linestyle="--", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["igraph"] for r in results], label="iGraph", linestyle=":", color="tab:green")
 
 	plt.xlabel("Nombre de nœuds")
 	plt.ylabel("Temps (secondes)")
