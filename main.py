@@ -11,16 +11,13 @@ def	igraph_from_edge_index(edge_index, num_nodes):
 	g.add_edges(edge_list)
 	return g
 
-def	igraph_clustering_triangle(edge_index, num_nodes):
-	t0 = time.perf_counter()
-	g = igraph_from_edge_index(edge_index, num_nodes)
-	clust = g.transitivity_local_undirected(mode="zero")
-	t1 = time.perf_counter()
-	clust_tensor = torch.tensor(clust, dtype=torch.float32)
-	degree = torch.tensor(g.degree(), dtype=torch.float32)
-	possible = degree * (degree - 1)
-	triangles = (clust_tensor * possible) / 2
-	return triangles, clust_tensor, t1 - t0
+def	triangle_count_igraph(g, edge_index, num_nodes):
+    triangles_per_node = g.triangles()
+    return torch.tensor(triangles_per_node, dtype=torch.float32)
+
+def	clustering_coefficient_igraph(g, edge_index, num_nodes):
+    clust = g.transitivity_local_undirected(mode="zero")
+    return torch.tensor(clust, dtype=torch.float32)
 
 # --------- CLASSIQUE ---------
 def	triangle_count(edge_index, num_nodes):
@@ -132,8 +129,12 @@ def	benchmark(num_nodes, prob):
 	tri_fast = triangle_count_fast(edge_index, num_nodes)
 	clus_fast = clustering_coefficient_fast(edge_index, num_nodes)
 	time_fast = time.perf_counter() - t1
-
-	_, clus_ig, time_ig = igraph_clustering_triangle(edge_index, num_nodes)
+	
+	t2 = time.perf_counter()
+	g = igraph_from_edge_index(edge_index, num_nodes)
+	tri_ig = triangle_count_igraph(g, edge_index, num_nodes)
+	clus_ig = clustering_coefficient_igraph(g, edge_index, num_nodes)
+	time_ig = time.perf_counter() - t2
 
 	return {
 		"nodes"						: num_nodes,
@@ -147,6 +148,7 @@ def	benchmark(num_nodes, prob):
 		"same_clustering_classique"	: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
 		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
 		"same_clustering_fast"		: torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
+		"same_triangles_ig"		    : torch.allclose(tri_nx_raw, tri_ig),
 		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
 	}
 
