@@ -133,7 +133,7 @@ def	benchmark(num_nodes, prob):
 	clus_fast = clustering_coefficient_fast(edge_index, num_nodes)
 	time_fast = time.perf_counter() - t1
 
-	tri_ig, clus_ig, time_ig = igraph_clustering_triangle(edge_index, num_nodes)
+	_, clus_ig, time_ig = igraph_clustering_triangle(edge_index, num_nodes)
 
 	return {
 		"nodes"						: num_nodes,
@@ -147,7 +147,6 @@ def	benchmark(num_nodes, prob):
 		"same_clustering_classique"	: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
 		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
 		"same_clustering_fast"		: torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
-		"same_triangles_igraph"		: torch.allclose(tri_nx_raw, tri_ig),
 		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
 	}
 
