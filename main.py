@@ -5,7 +5,34 @@ import matplotlib.pyplot as plt
 import igraph as ig
 from collections import defaultdict
 
-# --------- IGRAPH (corrigé) ---------
+# --------- EDGEWISE ---------
+def	triangle_count_edgewise(edge_index, num_nodes):
+	row, col = edge_index
+	neighbors = [set() for _ in range(num_nodes)]
+	for u, v in zip(row.tolist(), col.tolist()):
+		if u != v:
+			neighbors[u].add(v)
+	triangle_counts = torch.zeros(num_nodes, dtype=torch.float32)
+	for u in range(num_nodes):
+		for v in neighbors[u]:
+			if u < v:
+				common = neighbors[u] & neighbors[v]
+				for w in common:
+					triangle_counts[u] += 1
+					triangle_counts[v] += 1
+					triangle_counts[w] += 1
+	return triangle_counts
+
+def	clustering_coefficient_edgewise(edge_index, num_nodes):
+	triangles = triangle_count_edgewise(edge_index, num_nodes)
+	degrees = torch.bincount(edge_index[0], minlength=num_nodes).float()
+	possible = degrees * (degrees - 1)
+	clustering = torch.zeros(num_nodes, dtype=torch.float32)
+	mask = possible > 0
+	clustering[mask] = (2 * triangles[mask]) / possible[mask]
+	return clustering
+
+# --------- IGRAPH ---------
 def	ig_with_conversion(edge_index, num_nodes):
 	t0 = time.perf_counter()
 	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
@@ -132,10 +159,15 @@ def	benchmark(num_nodes, prob):
 	clus_clas = clustering_coefficient(edge_index, num_nodes)
 	time_clas = time.perf_counter() - t0
 
-	t1 = time.perf_counter()
+	t0 = time.perf_counter()
 	tri_fast = triangle_count_fast(edge_index, num_nodes)
 	clus_fast = clustering_coefficient_fast(edge_index, num_nodes)
-	time_fast = time.perf_counter() - t1
+	time_fast = time.perf_counter() - t0
+	
+	t0 = time.perf_counter()
+	tri_edge = triangle_count_edgewise(edge_index, num_nodes)
+	clus_edge = clustering_coefficient_edgewise(edge_index, num_nodes)
+	time_edge = time.perf_counter() - t0
 
 	tri_ig, clus_ig, time_ig = ig_with_conversion(edge_index, num_nodes)
 
@@ -146,11 +178,14 @@ def	benchmark(num_nodes, prob):
 		"nx_raw": time_nx_raw,
 		"classique": time_clas,
 		"fast": time_fast,
+		"edge": time_edge,
 		"igraph": time_ig,
 		"same_triangles_classique": torch.allclose(tri_nx_raw, tri_clas),
 		"same_clustering_classique": torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
 		"same_triangles_fast": torch.allclose(tri_nx_raw, tri_fast),
 		"same_clustering_fast": torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
+		"same_triangles_edge": torch.allclose(tri_nx_raw, tri_edge),
+		"same_clustering_edge": torch.allclose(clus_nx_raw, clus_edge, atol=1e-3),
 		"same_triangles_ig": torch.allclose(tri_nx_raw, tri_ig),
 		"same_clustering_igraph": torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
 	}
@@ -172,6 +207,7 @@ if __name__ == "__main__":
 	plt.plot([r["nodes"] for r in results], [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:red")
 	plt.plot([r["nodes"] for r in results], [r["classique"] for r in results], label="Classique", color="tab:blue")
 	plt.plot([r["nodes"] for r in results], [r["fast"] for r in results], label="Fast", linestyle="--", color="tab:blue")
+	plt.plot([r["nodes"] for r in results], [r["edge"] for r in results], label="Edge", linestyle=":", color="tab:blue")
 	plt.plot([r["nodes"] for r in results], [r["igraph"] for r in results], label="iGraph", linestyle=":", color="tab:green")
 
 	plt.xlabel("Nombre de nœuds")
