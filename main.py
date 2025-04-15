@@ -120,7 +120,7 @@ def	benchmark(num_nodes, prob):
 	G = nx.Graph()
 	G.add_edges_from(zip(edge_index[0].tolist(), edge_index[1].tolist()))
 
-	tri_nx_conv, clus_nx_conv, time_nx_conv = nx_with_conversion(edge_index, num_nodes)
+	_, _, time_nx_conv = nx_with_conversion(edge_index, num_nodes)
 	tri_nx_raw, clus_nx_raw, time_nx_raw = nx_no_conversion(G, num_nodes)
 
 	t0 = time.perf_counter()
@@ -143,11 +143,12 @@ def	benchmark(num_nodes, prob):
 		"classique"					: time_clas,
 		"fast"						: time_fast,
 		"igraph"					: time_ig,
-		"same_triangles_clas"		: torch.allclose(tri_nx_raw, tri_clas),
-		"same_clustering_clas"		: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
+		"same_triangles_classique"	: torch.allclose(tri_nx_raw, tri_clas),
+		"same_clustering_classique"	: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
 		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
 		"same_clustering_fast"		: torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
-		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-2),
+		"same_triangles_igraph"		: torch.allclose(tri_nx_raw, tri_ig),
+		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
 	}
 
 # --------- MAIN ---------
