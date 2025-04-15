@@ -124,9 +124,9 @@ def	benchmark(num_nodes, prob):
 	tri_nx_raw, clus_nx_raw, time_nx_raw = nx_no_conversion(G, num_nodes)
 
 	t0 = time.perf_counter()
-	tri_opt = triangle_count(edge_index, num_nodes)
-	clus_opt = clustering_coefficient(edge_index, num_nodes)
-	time_opt = time.perf_counter() - t0
+	tri_clas = triangle_count(edge_index, num_nodes)
+	clus_clas = clustering_coefficient(edge_index, num_nodes)
+	time_clas = time.perf_counter() - t0
 
 	t1 = time.perf_counter()
 	tri_fast = triangle_count_fast(edge_index, num_nodes)
@@ -140,11 +140,11 @@ def	benchmark(num_nodes, prob):
 		"edges"						: edge_index.size(1) // 2,
 		"nx_conv_time"				: time_nx_conv,
 		"nx_raw_time"				: time_nx_raw,
-		"opt_time"					: time_opt,
+		"clas_time"					: time_clas,
 		"fast_time"					: time_fast,
 		"igraph_time"				: time_ig,
-		"same_triangles_opt"		: torch.allclose(tri_nx_raw, tri_opt),
-		"same_clustering_opt"		: torch.allclose(clus_nx_raw, clus_opt, atol=1e-3),
+		"same_triangles_clas"		: torch.allclose(tri_nx_raw, tri_clas),
+		"same_clustering_clas"		: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
 		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
 		"same_clustering_fast"		: torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
 		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-2),
@@ -164,11 +164,11 @@ if __name__ == "__main__":
 
 	# Affichage
 	plt.figure(figsize=(10, 6))
-	plt.plot([r["nodes"] for r in results], [r["nx_conv_time"] for r in results], label="NetworkX (avec conversion)")
-	plt.plot([r["nodes"] for r in results], [r["nx_raw_time"] for r in results], label="NetworkX (sans conversion)", linestyle="--")
-	plt.plot([r["nodes"] for r in results], [r["opt_time"] for r in results], label="Classique")
-	plt.plot([r["nodes"] for r in results], [r["fast_time"] for r in results], label="Optimisé")
-	plt.plot([r["nodes"] for r in results], [r["igraph_time"] for r in results], label="iGraph", linestyle=":")
+	plt.plot([r["nodes"] for r in results], [r["nx_conv_time"] for r in results], label="NetworkX (avec conversion)", color="tab:blue")
+	plt.plot([r["nodes"] for r in results], [r["nx_raw_time"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:blue")
+	plt.plot([r["nodes"] for r in results], [r["clas_time"] for r in results], label="Classique", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["fast_time"] for r in results], label="Fast", linestyle="--", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["igraph_time"] for r in results], label="iGraph", linestyle=":", color="tab:green")
 
 	plt.xlabel("Nombre de nœuds")
 	plt.ylabel("Temps (secondes)")
