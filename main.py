@@ -3,26 +3,32 @@ import torch
 import networkx as nx
 import matplotlib.pyplot as plt
 import igraph as ig
+from collections import defaultdict
 
-# --------- IGRAPH ---------
-def	igraph_from_edge_index(edge_index, num_nodes):
-	edge_list = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
-	g = ig.Graph(n=num_nodes)
-	g.add_edges(edge_list)
-	return g
+# --------- IGRAPH (corrigé) ---------
+def	ig_with_conversion(edge_index, num_nodes):
+	t0 = time.perf_counter()
+	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
+	G = ig.Graph(n=num_nodes)
+	G.add_edges(edges)
 
-def	triangle_count_igraph(g, edge_index, num_nodes):
-    triangles_per_node = g.triangles()
-    return torch.tensor(triangles_per_node, dtype=torch.float32)
+	triangle_list = G.cliques(min=3, max=3)
+	triangle_counts = [0] * num_nodes
+	for tri in triangle_list:
+		for node in tri:
+			triangle_counts[node] += 1
 
-def	clustering_coefficient_igraph(g, edge_index, num_nodes):
-    clust = g.transitivity_local_undirected(mode="zero")
-    return torch.tensor(clust, dtype=torch.float32)
+	clustering = G.transitivity_local_undirected(mode="zero")
+	t1 = time.perf_counter()
+
+	tri_tensor = torch.tensor(triangle_counts, dtype=torch.float32)
+	clus_tensor = torch.tensor(clustering, dtype=torch.float32)
+	return tri_tensor, clus_tensor, t1 - t0
 
 # --------- CLASSIQUE ---------
 def	triangle_count(edge_index, num_nodes):
 	row, col = edge_index
-	neighbors = [[] for _ in range(num_nodes)]
+	neighbors = defaultdict(list)
 	for r, c in zip(row.tolist(), col.tolist()):
 		if r != c:
 			neighbors[r].append(c)
@@ -49,9 +55,10 @@ def	clustering_coefficient(edge_index, num_nodes):
 # --------- OPTIMISÉ ---------
 def	triangle_count_fast(edge_index, num_nodes):
 	row, col = edge_index
-	neighbors = [[] for _ in range(num_nodes)]
+	neighbors = defaultdict(list)
 	for r, c in zip(row.tolist(), col.tolist()):
 		neighbors[r].append(c)
+
 	triangles = torch.zeros(num_nodes, dtype=torch.float32)
 	for v in range(num_nodes):
 		nbrs = neighbors[v]
@@ -129,46 +136,42 @@ def	benchmark(num_nodes, prob):
 	tri_fast = triangle_count_fast(edge_index, num_nodes)
 	clus_fast = clustering_coefficient_fast(edge_index, num_nodes)
 	time_fast = time.perf_counter() - t1
-	
-	t2 = time.perf_counter()
-	g = igraph_from_edge_index(edge_index, num_nodes)
-	tri_ig = triangle_count_igraph(g, edge_index, num_nodes)
-	clus_ig = clustering_coefficient_igraph(g, edge_index, num_nodes)
-	time_ig = time.perf_counter() - t2
+
+	tri_ig, clus_ig, time_ig = ig_with_conversion(edge_index, num_nodes)
 
 	return {
-		"nodes"						: num_nodes,
-		"edges"						: edge_index.size(1) // 2,
-		"nx_conv"					: time_nx_conv,
-		"nx_raw"					: time_nx_raw,
-		"classique"					: time_clas,
-		"fast"						: time_fast,
-		"igraph"					: time_ig,
-		"same_triangles_classique"	: torch.allclose(tri_nx_raw, tri_clas),
-		"same_clustering_classique"	: torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
-		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
-		"same_clustering_fast"		: torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
-		"same_triangles_ig"		    : torch.allclose(tri_nx_raw, tri_ig),
-		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
+		"nodes": num_nodes,
+		"edges": edge_index.size(1) // 2,
+		"nx_conv": time_nx_conv,
+		"nx_raw": time_nx_raw,
+		"classique": time_clas,
+		"fast": time_fast,
+		"igraph": time_ig,
+		"same_triangles_classique": torch.allclose(tri_nx_raw, tri_clas),
+		"same_clustering_classique": torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
+		"same_triangles_fast": torch.allclose(tri_nx_raw, tri_fast),
+		"same_clustering_fast": torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
+		"same_triangles_ig": torch.allclose(tri_nx_raw, tri_ig),
+		"same_clustering_igraph": torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
 	}
 
 # --------- MAIN ---------
 if __name__ == "__main__":
 	results = []
-	sizes = [100, 500, 1000, 2000, 3000, 5000]
+	sizes = [100, 500, 1000, 2000]
 	prob = 0.01
 
 	for size in sizes:
-		print(f"▶ Benchmarking {size} nodes...")
+		print(f"\u25b6 Benchmarking {size} nodes...")
 		res = benchmark(size, prob)
 		print(res)
 		results.append(res)
 
 	plt.figure(figsize=(10, 6))
-	plt.plot([r["nodes"] for r in results], [r["nx_conv"] for r in results], label="NetworkX (avec conversion)", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["classique"] for r in results], label="Classique", color="tab:red")
-	plt.plot([r["nodes"] for r in results], [r["fast"] for r in results], label="Fast", linestyle="--", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["nx_conv"] for r in results], label="NetworkX (avec conversion)", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:red")
+	plt.plot([r["nodes"] for r in results], [r["classique"] for r in results], label="Classique", color="tab:blue")
+	plt.plot([r["nodes"] for r in results], [r["fast"] for r in results], label="Fast", linestyle="--", color="tab:blue")
 	plt.plot([r["nodes"] for r in results], [r["igraph"] for r in results], label="iGraph", linestyle=":", color="tab:green")
 
 	plt.xlabel("Nombre de nœuds")
