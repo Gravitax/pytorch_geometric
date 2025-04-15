@@ -136,18 +136,18 @@ def	benchmark(num_nodes, prob):
 	tri_ig, clus_ig, time_ig = igraph_clustering_triangle(edge_index, num_nodes)
 
 	return {
-		"nodes": num_nodes,
-		"edges": edge_index.size(1) // 2,
-		"nx_conv_time": time_nx_conv,
-		"nx_raw_time": time_nx_raw,
-		"opt_time": time_opt,
-		"fast_time": time_fast,
-		"igraph_time": time_ig,
-		"same_triangles_opt": torch.allclose(tri_nx_raw, tri_opt),
-		"same_clustering_opt": torch.allclose(clus_nx_raw, clus_opt, atol=1e-3),
-		"same_triangles_fast": torch.allclose(tri_nx_raw, tri_fast),
-		"same_clustering_fast": torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
-		"same_clustering_igraph": torch.allclose(clus_nx_raw, clus_ig, atol=1e-2),
+		"nodes"						: num_nodes,
+		"edges"						: edge_index.size(1) // 2,
+		"nx_conv_time"				: time_nx_conv,
+		"nx_raw_time"				: time_nx_raw,
+		"opt_time"					: time_opt,
+		"fast_time"					: time_fast,
+		"igraph_time"				: time_ig,
+		"same_triangles_opt"		: torch.allclose(tri_nx_raw, tri_opt),
+		"same_clustering_opt"		: torch.allclose(clus_nx_raw, clus_opt, atol=1e-3),
+		"same_triangles_fast"		: torch.allclose(tri_nx_raw, tri_fast),
+		"same_clustering_fast"		: torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
+		"same_clustering_igraph"	: torch.allclose(clus_nx_raw, clus_ig, atol=1e-2),
 	}
 
 # --------- MAIN ---------
@@ -166,8 +166,8 @@ if __name__ == "__main__":
 	plt.figure(figsize=(10, 6))
 	plt.plot([r["nodes"] for r in results], [r["nx_conv_time"] for r in results], label="NetworkX (avec conversion)")
 	plt.plot([r["nodes"] for r in results], [r["nx_raw_time"] for r in results], label="NetworkX (sans conversion)", linestyle="--")
-	plt.plot([r["nodes"] for r in results], [r["opt_time"] for r in results], label="Optimisé (classique)")
-	plt.plot([r["nodes"] for r in results], [r["fast_time"] for r in results], label="Optimisé (fast)")
+	plt.plot([r["nodes"] for r in results], [r["opt_time"] for r in results], label="Classique")
+	plt.plot([r["nodes"] for r in results], [r["fast_time"] for r in results], label="Optimisé")
 	plt.plot([r["nodes"] for r in results], [r["igraph_time"] for r in results], label="iGraph", linestyle=":")
 
 	plt.xlabel("Nombre de nœuds")
