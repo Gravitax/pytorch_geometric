@@ -162,7 +162,6 @@ if __name__ == "__main__":
 		print(res)
 		results.append(res)
 
-	# Affichage
 	plt.figure(figsize=(10, 6))
 	plt.plot([r["nodes"] for r in results], [r["nx_conv_time"] for r in results], label="NetworkX (avec conversion)", color="tab:blue")
 	plt.plot([r["nodes"] for r in results], [r["nx_raw_time"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:blue")
