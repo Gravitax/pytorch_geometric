@@ -61,21 +61,10 @@ def	nx_raw(edge_index, num_nodes):
 
 # --------- IG ---------
 def	count_triangles_per_node(triangles, num_nodes):
-	t0 = time.perf_counter()
 	triangle_count = [0] * num_nodes
 	for clique in triangles:
 		for node in clique:
 			triangle_count[node] += 1
-	t1 = time.perf_counter()
-	total_triangles = sum(triangle_count)
-	elapsed = t1 - t0
-
-	print(f"⏱️ Triangle count time: {elapsed:.6f} s")
-	print(f"🔺 Total triangle participations: {total_triangles}")
-	if total_triangles > 0:
-		print(f"⏳ Time per triangle: {elapsed / total_triangles:.8f} s/triangle")
-	else:
-		print("⚠️ No triangles found.")
 	return triangle_count
 
 def	ig_with_conversion(edge_index, num_nodes):
@@ -83,13 +72,35 @@ def	ig_with_conversion(edge_index, num_nodes):
 	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
 	G = ig.Graph(n=num_nodes)
 	G.add_edges(edges)
+
+	# --- Mesure 1 : temps pour trouver les cliques (triangles)
+	t0 = time.perf_counter()
 	triangles = G.cliques(min=3, max=3)
-
-	_ = count_triangles_per_node(triangles, num_nodes)
-
-	_ = G.transitivity_local_undirected(mode="zero")
 	t1 = time.perf_counter()
-	return t1 - t0
+
+	# --- Mesure 2 : temps pour compter les triangles par nœud
+	triangle_count = [0] * num_nodes
+	for clique in triangles:
+		for node in clique:
+			triangle_count[node] += 1
+	t2 = time.perf_counter()
+
+	# --- Clustering (hors benchmark détaillé mais dans total)
+	_ = G.transitivity_local_undirected(mode="zero")
+	t3 = time.perf_counter()
+
+	# --- Statistiques
+	time_cliques = t1 - t0
+	time_count = t2 - t1
+	time_total = t3 - t0
+
+	print(f"\n📊 iGraph Profiling for {num_nodes} nodes")
+	print(f"   ⏳ Cliques (G.cliques): {time_cliques:.6f} s")
+	print(f"   🧮 Triangle count per node: {time_count:.6f} s")
+	print(f"   ⚙️  Clustering + total: {time_total:.6f} s")
+	print(f"   🔍 Count step is {100 * time_count / time_total:.2f}% of total")
+
+	return time_total
 
 # --------- GRAPH RANDOM ---------
 def	generate_random_graph(num_nodes, edge_prob):
