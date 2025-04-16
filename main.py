@@ -96,6 +96,7 @@ def	benchmark(num_nodes, edge_prob):
 
 	return {
 		"nodes": num_nodes,
+		"edge_prob": edge_prob,
 		"default": time_default,
 		"nx_conv": time_nx_conv,
 		"nx_raw": time_nx_raw,
@@ -104,7 +105,7 @@ def	benchmark(num_nodes, edge_prob):
 
 # --------- MAIN ---------
 if __name__ == "__main__":
-	node_range = (15, 30, 1)  # (start, stop, step)
+	node_range = (15, 100, 1)  # (start, stop, step)
 	edge_prob_range = (0.2, 0.8)
 	results = []
 
@@ -115,18 +116,29 @@ if __name__ == "__main__":
 		results.append(res)
 
 	nodes = [r["nodes"] for r in results]
-	plt.figure(figsize=(10, 6))
+	edge_probs = [r["edge_prob"] for r in results]
 
+	plt.figure(figsize=(12, 7))
+
+	# Tracer les courbes
 	plt.plot(nodes, [r["nx_conv"] for r in results], label="NetworkX (avec conversion)", marker="o", color="tab:red")
 	plt.plot(nodes, [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", marker="x", color="tab:red", linestyle="--")
 	plt.plot(nodes, [r["default"] for r in results], label="Implémentation personnalisée", marker="s", color="tab:blue")
 	plt.plot(nodes, [r["igraph"] for r in results], label="iGraph", marker="^", color="tab:green")
 
+	# Annoter les edge_prob sur chaque point
+	for i, (x, prob) in enumerate(zip(nodes, edge_probs)):
+		plt.annotate(f"{prob:.2f}", (x, results[i]["default"]), fontsize=8, xytext=(0, 5), textcoords="offset points", ha='center')
+
+	# Ajouter des lignes verticales pour chaque point
+	for x in nodes:
+		plt.axvline(x=x, color='gray', linestyle=':', linewidth=0.5)
+
 	plt.xlabel("Nombre de nœuds")
-	plt.ylabel("Temps (secondes, échelle log)")
-	plt.title("Benchmark Triangle / Clustering")
-	# plt.yscale("log")  # Activer l'échelle logarithmique
+	plt.ylabel("Temps (secondes)")
+	plt.title("Benchmark Triangle / Clustering (avec edge_prob annoté)")
+	# plt.yscale("log")  # Activer si tu veux une échelle log
 	plt.legend()
-	plt.grid(True, which="both", linewidth=0.5)
+	plt.grid(True, which="both", linewidth=0.3)
 	plt.tight_layout()
 	plt.show()
