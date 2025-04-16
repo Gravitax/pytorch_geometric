@@ -60,47 +60,52 @@ def	nx_raw(edge_index, num_nodes):
 	return t1 - t0
 
 # --------- IG ---------
-def	count_triangles_per_node(triangles, num_nodes):
+
+import numpy as np
+
+# Globals pour suivre le temps passé dans le count_step
+total_count_time = 0.0
+total_ig_time = 0.0
+count_measurements = 0
+
+def	count_triangles(triangles, num_nodes):
 	triangle_count = [0] * num_nodes
 	for clique in triangles:
 		for node in clique:
 			triangle_count[node] += 1
 	return triangle_count
 
-def	ig_with_conversion(edge_index, num_nodes):
+def ig_with_conversion(edge_index, num_nodes, verbose=False):
+	global total_count_time, total_ig_time, count_measurements
+
 	t0 = time.perf_counter()
 	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
 	G = ig.Graph(n=num_nodes)
 	G.add_edges(edges)
 
-	# --- Mesure 1 : temps pour trouver les cliques (triangles)
-	t0 = time.perf_counter()
 	triangles = G.cliques(min=3, max=3)
 	t1 = time.perf_counter()
 
-	# --- Mesure 2 : temps pour compter les triangles par nœud
-	triangle_count = [0] * num_nodes
-	for clique in triangles:
-		for node in clique:
-			triangle_count[node] += 1
+	_ = count_triangles(triangles, num_nodes)
 	t2 = time.perf_counter()
 
-	# --- Clustering (hors benchmark détaillé mais dans total)
 	_ = G.transitivity_local_undirected(mode="zero")
 	t3 = time.perf_counter()
 
-	# --- Statistiques
-	time_cliques = t1 - t0
-	time_count = t2 - t1
-	time_total = t3 - t0
+	count_time = t2 - t1
+	total_time = t3 - t0
 
-	print(f"\n📊 iGraph Profiling for {num_nodes} nodes")
-	print(f"   ⏳ Cliques (G.cliques): {time_cliques:.6f} s")
-	print(f"   🧮 Triangle count per node: {time_count:.6f} s")
-	print(f"   ⚙️  Clustering + total: {time_total:.6f} s")
-	print(f"   🔍 Count step is {100 * time_count / time_total:.2f}% of total")
+	total_count_time += count_time
+	total_ig_time += total_time
+	count_measurements += 1
 
-	return time_total
+	if verbose:
+		print(f"   ⏳ Cliques: {t1 - t0:.6f} s")
+		print(f"   🧮 Triangle count: {count_time:.6f} s")
+		print(f"   ⚙️  Total: {total_time:.6f} s")
+		print(f"   🔍 Ratio: {100 * count_time / total_time:.2f}%")
+
+	return total_time
 
 # --------- GRAPH RANDOM ---------
 def	generate_random_graph(num_nodes, edge_prob):
@@ -146,6 +151,11 @@ if __name__ == "__main__":
 		print(f"\u25b6 Benchmarking {size} nodes, edge_prob: {edge_prob}")
 		res = benchmark(size, edge_prob)
 		results.append(res)
+
+	# Affichage de la moyenne globale
+	if count_measurements > 0:
+		avg_ratio = total_count_time / total_ig_time
+		print(f"\n📈 Moyenne du ratio count_step / total_igraph: {avg_ratio:.2%} ({count_measurements} mesures)")
 
 	nodes = [r["nodes"] for r in results]
 	edge_probs = [r["edge_prob"] for r in results]
