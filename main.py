@@ -104,7 +104,7 @@ def	benchmark(num_nodes, edge_prob):
 
 # --------- MAIN ---------
 if __name__ == "__main__":
-	node_range = (10, 50, 1)  # (start, stop, step)
+	node_range = (15, 30, 1)  # (start, stop, step)
 	edge_prob_range = (0.2, 0.8)
 	edge_prob = random.uniform(*edge_prob_range)
 	results = []
