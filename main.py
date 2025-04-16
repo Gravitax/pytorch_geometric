@@ -61,8 +61,6 @@ def	nx_raw(edge_index, num_nodes):
 
 # --------- IG ---------
 
-import numpy as np
-
 # Globals pour suivre le temps passé dans le count_step
 total_count_time = 0.0
 total_ig_time = 0.0
@@ -75,7 +73,7 @@ def	count_triangles(triangles, num_nodes):
 			triangle_count[node] += 1
 	return triangle_count
 
-def ig_with_conversion(edge_index, num_nodes, verbose=False):
+def ig_with_conversion(edge_index, num_nodes, verbose=True):
 	global total_count_time, total_ig_time, count_measurements
 
 	t0 = time.perf_counter()
