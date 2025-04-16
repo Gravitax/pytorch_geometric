@@ -60,22 +60,26 @@ def	nx_raw(edge_index, num_nodes):
 	return t1 - t0
 
 # --------- IG ---------
-def ig_with_conversion(edge_index, num_nodes):
-    t0 = time.perf_counter()
-    edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
-    G = ig.Graph(n=num_nodes)
-    G.add_edges(edges)
-    triangles = G.cliques(min=3, max=3)
+from collections import Counter
 
-    # Comptage du nombre de triangles par nœud
-    triangle_count = [0] * num_nodes
-    for clique in triangles:
-        for node in clique:
-            triangle_count[node] += 1
+def	count_triangles_per_node(triangles, num_nodes):
+	counter = Counter()
+	for clique in triangles:
+		counter.update(clique)
+	return [counter.get(i, 0) for i in range(num_nodes)]
 
-    _ = G.transitivity_local_undirected(mode="zero")
-    t1 = time.perf_counter()
-    return t1 - t0
+def	ig_with_conversion(edge_index, num_nodes):
+	t0 = time.perf_counter()
+	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
+	G = ig.Graph(n=num_nodes)
+	G.add_edges(edges)
+	triangles = G.cliques(min=3, max=3)
+
+	_ = count_triangles_per_node(triangles, num_nodes)
+
+	_ = G.transitivity_local_undirected(mode="zero")
+	t1 = time.perf_counter()
+	return t1 - t0
 
 
 # --------- GRAPH RANDOM ---------
