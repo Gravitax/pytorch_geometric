@@ -106,11 +106,11 @@ def	benchmark(num_nodes, edge_prob):
 if __name__ == "__main__":
 	node_range = (15, 30, 1)  # (start, stop, step)
 	edge_prob_range = (0.2, 0.8)
-	edge_prob = random.uniform(*edge_prob_range)
 	results = []
 
 	for size in range(*node_range):
-		print(f"\u25b6 Benchmarking {size} nodes...")
+		edge_prob = random.uniform(*edge_prob_range)
+		print(f"\u25b6 Benchmarking {size} nodes, edge_prob: {edge_prob}")
 		res = benchmark(size, edge_prob)
 		results.append(res)
 
