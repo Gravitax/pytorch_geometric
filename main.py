@@ -67,7 +67,15 @@ def	count_triangles_per_node(triangles, num_nodes):
 		for node in clique:
 			triangle_count[node] += 1
 	t1 = time.perf_counter()
-	print(f"count_triangle_per_node: {t1 - t0}s")
+	total_triangles = sum(triangle_count)
+	elapsed = t1 - t0
+
+	print(f"⏱️ Triangle count time: {elapsed:.6f} s")
+	print(f"🔺 Total triangle participations: {total_triangles}")
+	if total_triangles > 0:
+		print(f"⏳ Time per triangle: {elapsed / total_triangles:.8f} s/triangle")
+	else:
+		print("⚠️ No triangles found.")
 	return triangle_count
 
 def	ig_with_conversion(edge_index, num_nodes):
