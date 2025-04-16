@@ -71,9 +71,8 @@ def	ig_with_conversion(edge_index, num_nodes):
 	return t1 - t0
 
 # --------- GRAPH RANDOM ---------
-def	generate_random_graph(num_nodes, edge_prob_range=(0.2, 0.8)):
+def	generate_random_graph(num_nodes, edge_prob):
 	while True:
-		edge_prob = random.uniform(*edge_prob_range)
 		edge_index = erdos_renyi_graph(num_nodes, edge_prob)
 		edge_index = to_undirected(edge_index)  # Ensure undirected
 		data = Data(edge_index=edge_index, num_nodes=num_nodes)
@@ -83,8 +82,8 @@ def	generate_random_graph(num_nodes, edge_prob_range=(0.2, 0.8)):
 			return data.edge_index, data.num_nodes
 
 # --------- BENCHMARK ---------
-def	benchmark(num_nodes):
-	edge_index, num_nodes = generate_random_graph(num_nodes)
+def	benchmark(num_nodes, edge_prob):
+	edge_index, num_nodes = generate_random_graph(num_nodes, edge_prob)
 
 	t0 = time.perf_counter()
 	_ = triangle(edge_index, num_nodes)
@@ -105,12 +104,14 @@ def	benchmark(num_nodes):
 
 # --------- MAIN ---------
 if __name__ == "__main__":
-	size_range = (10, 50, 1)  # (start, stop, step)
+	node_range = (10, 50, 1)  # (start, stop, step)
+	edge_prob_range = (0.2, 0.8)
+	edge_prob = random.uniform(*edge_prob_range)
 	results = []
 
-	for size in range(*size_range):
+	for size in range(*node_range):
 		print(f"\u25b6 Benchmarking {size} nodes...")
-		res = benchmark(size)
+		res = benchmark(size, edge_prob)
 		results.append(res)
 
 	nodes = [r["nodes"] for r in results]
