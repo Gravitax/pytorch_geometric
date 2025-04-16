@@ -60,13 +60,12 @@ def	nx_raw(edge_index, num_nodes):
 	return t1 - t0
 
 # --------- IG ---------
-from collections import Counter
-
 def	count_triangles_per_node(triangles, num_nodes):
-	counter = Counter()
+	triangle_count = [0] * num_nodes
 	for clique in triangles:
-		counter.update(clique)
-	return [counter.get(i, 0) for i in range(num_nodes)]
+		for node in clique:
+			triangle_count[node] += 1
+	return triangle_count
 
 def	ig_with_conversion(edge_index, num_nodes):
 	t0 = time.perf_counter()
