@@ -80,7 +80,6 @@ def	ig_with_conversion(edge_index, num_nodes):
 	t1 = time.perf_counter()
 	return t1 - t0
 
-
 # --------- GRAPH RANDOM ---------
 def	generate_random_graph(num_nodes, edge_prob):
 	while True:
