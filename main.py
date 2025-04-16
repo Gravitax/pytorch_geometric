@@ -4,83 +4,13 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import igraph as ig
 from collections import defaultdict
+import random
+from torch_geometric.utils import erdos_renyi_graph, to_undirected
+from torch_geometric.data import Data
+from torch_geometric.transforms import LargestConnectedComponents
 
-# --------- EDGEWISE ---------
-def	triangle_count_edgewise(edge_index, num_nodes):
-	row, col = edge_index
-	neighbors = [set() for _ in range(num_nodes)]
-	for u, v in zip(row.tolist(), col.tolist()):
-		if u != v:
-			neighbors[u].add(v)
-	triangle_counts = torch.zeros(num_nodes, dtype=torch.float32)
-	for u in range(num_nodes):
-		for v in neighbors[u]:
-			if u < v:
-				common = neighbors[u] & neighbors[v]
-				for w in common:
-					triangle_counts[u] += 1
-					triangle_counts[v] += 1
-					triangle_counts[w] += 1
-	return triangle_counts
-
-def	clustering_coefficient_edgewise(edge_index, num_nodes):
-	triangles = triangle_count_edgewise(edge_index, num_nodes)
-	degrees = torch.bincount(edge_index[0], minlength=num_nodes).float()
-	possible = degrees * (degrees - 1)
-	clustering = torch.zeros(num_nodes, dtype=torch.float32)
-	mask = possible > 0
-	clustering[mask] = (2 * triangles[mask]) / possible[mask]
-	return clustering
-
-# --------- IGRAPH ---------
-def	ig_with_conversion(edge_index, num_nodes):
-	t0 = time.perf_counter()
-	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
-	G = ig.Graph(n=num_nodes)
-	G.add_edges(edges)
-
-	triangle_list = G.cliques(min=3, max=3)
-	triangle_counts = [0] * num_nodes
-	for tri in triangle_list:
-		for node in tri:
-			triangle_counts[node] += 1
-
-	clustering = G.transitivity_local_undirected(mode="zero")
-	t1 = time.perf_counter()
-
-	tri_tensor = torch.tensor(triangle_counts, dtype=torch.float32)
-	clus_tensor = torch.tensor(clustering, dtype=torch.float32)
-	return tri_tensor, clus_tensor, t1 - t0
-
-# --------- CLASSIQUE ---------
-def	triangle_count(edge_index, num_nodes):
-	row, col = edge_index
-	neighbors = defaultdict(list)
-	for r, c in zip(row.tolist(), col.tolist()):
-		if r != c:
-			neighbors[r].append(c)
-
-	triangles = torch.zeros(num_nodes, dtype=torch.float32)
-	for v in range(num_nodes):
-		nbrs = neighbors[v]
-		for i in range(len(nbrs)):
-			for j in range(i + 1, len(nbrs)):
-				u, w = nbrs[i], nbrs[j]
-				if w in neighbors[u]:
-					triangles[v] += 1
-	return triangles
-
-def	clustering_coefficient(edge_index, num_nodes):
-	triangles = triangle_count(edge_index, num_nodes)
-	degree = torch.bincount(edge_index[0], minlength=num_nodes).float()
-	possible = degree * (degree - 1)
-	clustering = torch.zeros(num_nodes, dtype=torch.float32)
-	mask = possible > 0
-	clustering[mask] = (2 * triangles[mask]) / possible[mask]
-	return clustering
-
-# --------- OPTIMISÉ ---------
-def	triangle_count_fast(edge_index, num_nodes):
+# --------- DEFAULT ---------
+def	triangle(edge_index, num_nodes):
 	row, col = edge_index
 	neighbors = defaultdict(list)
 	for r, c in zip(row.tolist(), col.tolist()):
@@ -98,8 +28,8 @@ def	triangle_count_fast(edge_index, num_nodes):
 		triangles[v] = count / 2
 	return triangles
 
-def	clustering_coefficient_fast(edge_index, num_nodes):
-	triangles = triangle_count_fast(edge_index, num_nodes)
+def	clustering(edge_index, num_nodes):
+	triangles = triangle(edge_index, num_nodes)
 	degree = torch.bincount(edge_index[0], minlength=num_nodes).float()
 	possible = degree * (degree - 1)
 	clustering = torch.zeros(num_nodes, dtype=torch.float32)
@@ -107,113 +37,95 @@ def	clustering_coefficient_fast(edge_index, num_nodes):
 	clustering[mask] = (2 * triangles[mask]) / possible[mask]
 	return clustering
 
-# --------- NETWORKX ---------
+# --------- NX ---------
 def	nx_with_conversion(edge_index, num_nodes):
 	t0 = time.perf_counter()
 	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
 	G = nx.Graph()
 	G.add_edges_from(edges)
-	triangles = nx.triangles(G)
-	clustering = nx.clustering(G)
+	_ = nx.triangles(G)
+	_ = nx.clustering(G)
 	t1 = time.perf_counter()
+	return t1 - t0
 
-	tri_tensor = torch.tensor([triangles.get(i, 0) for i in range(num_nodes)], dtype=torch.float32)
-	clus_tensor = torch.tensor([clustering.get(i, 0.0) for i in range(num_nodes)], dtype=torch.float32)
-	return tri_tensor, clus_tensor, t1 - t0
+def	nx_raw(edge_index, num_nodes):
+	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
+	G = nx.Graph()
+	G.add_edges_from(edges)
 
-def	nx_no_conversion(G, num_nodes):
 	t0 = time.perf_counter()
-	triangles = nx.triangles(G)
-	clustering = nx.clustering(G)
+	_ = nx.triangles(G)
+	_ = nx.clustering(G)
 	t1 = time.perf_counter()
+	return t1 - t0
 
-	tri_tensor = torch.tensor([triangles.get(i, 0) for i in range(num_nodes)], dtype=torch.float32)
-	clus_tensor = torch.tensor([clustering.get(i, 0.0) for i in range(num_nodes)], dtype=torch.float32)
-	return tri_tensor, clus_tensor, t1 - t0
+# --------- IG ---------
+def	ig_with_conversion(edge_index, num_nodes):
+	t0 = time.perf_counter()
+	edges = list(zip(edge_index[0].tolist(), edge_index[1].tolist()))
+	G = ig.Graph(n=num_nodes)
+	G.add_edges(edges)
+	_ = G.cliques(min=3, max=3)  # triangles
+	_ = G.transitivity_local_undirected(mode="zero")  # clustering
+	t1 = time.perf_counter()
+	return t1 - t0
 
 # --------- GRAPH RANDOM ---------
-def	generate_random_graph(num_nodes, prob):
-	edges = []
-	for i in range(num_nodes):
-		for j in range(i + 1, num_nodes):
-			if torch.rand(1).item() < prob:
-				edges.append((i, j))
-	if not edges:
-		return torch.empty((2, 0), dtype=torch.long), num_nodes
-	edge_index = torch.tensor(edges, dtype=torch.long).t()
-	edge_index = torch.cat([edge_index, edge_index[[1, 0]]], dim=1)
-	return edge_index, num_nodes
+def	generate_random_graph(num_nodes, edge_prob_range=(0.2, 0.8)):
+	while True:
+		edge_prob = random.uniform(*edge_prob_range)
+		edge_index = erdos_renyi_graph(num_nodes, edge_prob)
+		edge_index = to_undirected(edge_index)  # Ensure undirected
+		data = Data(edge_index=edge_index, num_nodes=num_nodes)
+		lcc_transform = LargestConnectedComponents(num_components=1)
+		data = lcc_transform(data)
+		if data.num_nodes == num_nodes:
+			return data.edge_index, data.num_nodes
 
 # --------- BENCHMARK ---------
-def	benchmark(num_nodes, prob):
-	edge_index, _ = generate_random_graph(num_nodes, prob)
-
-	G = nx.Graph()
-	G.add_edges_from(zip(edge_index[0].tolist(), edge_index[1].tolist()))
-
-	_, _, time_nx_conv = nx_with_conversion(edge_index, num_nodes)
-	tri_nx_raw, clus_nx_raw, time_nx_raw = nx_no_conversion(G, num_nodes)
+def	benchmark(num_nodes):
+	edge_index, num_nodes = generate_random_graph(num_nodes)
 
 	t0 = time.perf_counter()
-	tri_clas = triangle_count(edge_index, num_nodes)
-	clus_clas = clustering_coefficient(edge_index, num_nodes)
-	time_clas = time.perf_counter() - t0
+	_ = triangle(edge_index, num_nodes)
+	_ = clustering(edge_index, num_nodes)
+	time_default = time.perf_counter() - t0
 
-	t0 = time.perf_counter()
-	tri_fast = triangle_count_fast(edge_index, num_nodes)
-	clus_fast = clustering_coefficient_fast(edge_index, num_nodes)
-	time_fast = time.perf_counter() - t0
-	
-	t0 = time.perf_counter()
-	tri_edge = triangle_count_edgewise(edge_index, num_nodes)
-	clus_edge = clustering_coefficient_edgewise(edge_index, num_nodes)
-	time_edge = time.perf_counter() - t0
-
-	tri_ig, clus_ig, time_ig = ig_with_conversion(edge_index, num_nodes)
+	time_nx_conv = nx_with_conversion(edge_index, num_nodes)
+	time_nx_raw = nx_raw(edge_index, num_nodes)
+	time_ig = ig_with_conversion(edge_index, num_nodes)
 
 	return {
 		"nodes": num_nodes,
-		"edges": edge_index.size(1) // 2,
+		"default": time_default,
 		"nx_conv": time_nx_conv,
 		"nx_raw": time_nx_raw,
-		"classique": time_clas,
-		"fast": time_fast,
-		"edge": time_edge,
 		"igraph": time_ig,
-		"same_triangles_classique": torch.allclose(tri_nx_raw, tri_clas),
-		"same_clustering_classique": torch.allclose(clus_nx_raw, clus_clas, atol=1e-3),
-		"same_triangles_fast": torch.allclose(tri_nx_raw, tri_fast),
-		"same_clustering_fast": torch.allclose(clus_nx_raw, clus_fast, atol=1e-3),
-		"same_triangles_edge": torch.allclose(tri_nx_raw, tri_edge),
-		"same_clustering_edge": torch.allclose(clus_nx_raw, clus_edge, atol=1e-3),
-		"same_triangles_ig": torch.allclose(tri_nx_raw, tri_ig),
-		"same_clustering_igraph": torch.allclose(clus_nx_raw, clus_ig, atol=1e-3),
 	}
 
 # --------- MAIN ---------
 if __name__ == "__main__":
+	sizes = [10, 20, 50, 100, 200]
 	results = []
-	sizes = [100, 500, 1000, 2000]
-	prob = 0.01
 
 	for size in sizes:
 		print(f"\u25b6 Benchmarking {size} nodes...")
-		res = benchmark(size, prob)
-		print(res)
+		res = benchmark(size)
 		results.append(res)
 
+	nodes = [r["nodes"] for r in results]
 	plt.figure(figsize=(10, 6))
-	plt.plot([r["nodes"] for r in results], [r["nx_conv"] for r in results], label="NetworkX (avec conversion)", color="tab:red")
-	plt.plot([r["nodes"] for r in results], [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", linestyle="--", color="tab:red")
-	plt.plot([r["nodes"] for r in results], [r["classique"] for r in results], label="Classique", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["fast"] for r in results], label="Fast", linestyle="--", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["edge"] for r in results], label="Edge", linestyle=":", color="tab:blue")
-	plt.plot([r["nodes"] for r in results], [r["igraph"] for r in results], label="iGraph", linestyle=":", color="tab:green")
+
+	plt.plot(nodes, [r["nx_conv"] for r in results], label="NetworkX (avec conversion)", marker="o", color="tab:red")
+	plt.plot(nodes, [r["nx_raw"] for r in results], label="NetworkX (sans conversion)", marker="x", color="tab:red", linestyle="--")
+	plt.plot(nodes, [r["default"] for r in results], label="Implémentation personnalisée", marker="s", color="tab:blue")
+	plt.plot(nodes, [r["igraph"] for r in results], label="iGraph", marker="^", color="tab:green")
 
 	plt.xlabel("Nombre de nœuds")
-	plt.ylabel("Temps (secondes)")
+	plt.ylabel("Temps (secondes, échelle log)")
 	plt.title("Benchmark Triangle / Clustering")
+	# plt.yscale("log")  # Activer l'échelle logarithmique
 	plt.legend()
-	plt.grid(True)
+	plt.grid(True, which="both", linewidth=0.5)
 	plt.tight_layout()
 	plt.show()
