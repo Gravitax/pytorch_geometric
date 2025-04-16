@@ -105,7 +105,7 @@ def	benchmark(num_nodes):
 
 # --------- MAIN ---------
 if __name__ == "__main__":
-	size_range = (0, 300, 30)  # (start, stop, step)
+	size_range = (10, 50, 1)  # (start, stop, step)
 	results = []
 
 	for size in range(*size_range):
