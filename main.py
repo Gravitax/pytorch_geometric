@@ -105,10 +105,10 @@ def	benchmark(num_nodes):
 
 # --------- MAIN ---------
 if __name__ == "__main__":
-	sizes = [10, 20, 50, 100, 200]
+	size_range = (0, 300, 30)  # (start, stop, step)
 	results = []
 
-	for size in sizes:
+	for size in range(*size_range):
 		print(f"\u25b6 Benchmarking {size} nodes...")
 		res = benchmark(size)
 		results.append(res)
