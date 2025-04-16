@@ -61,17 +61,30 @@ def	nx_raw(edge_index, num_nodes):
 
 # --------- IG ---------
 
+import numpy as np
+
 # Globals pour suivre le temps passé dans le count_step
 total_count_time = 0.0
 total_ig_time = 0.0
 count_measurements = 0
 
-def	count_triangles(triangles, num_nodes):
-	triangle_count = [0] * num_nodes
-	for clique in triangles:
-		for node in clique:
-			triangle_count[node] += 1
-	return triangle_count
+def	count_triangles(triangles, num_nodes, threshold=10000):
+	"""
+	Compte le nombre de triangles par nœud avec la méthode la plus rapide selon la taille.
+	- Utilise Python pur pour petits volumes.
+	- Utilise numpy.bincount pour grands volumes.
+	"""
+	if len(triangles) < threshold:
+		# Version simple et efficace pour petits graphes
+		triangle_count = [0] * num_nodes
+		for clique in triangles:
+			for node in clique:
+				triangle_count[node] += 1
+		return triangle_count
+	else:
+		# Version numpy pour gros graphes
+		flat = np.fromiter((node for tri in triangles for node in tri), dtype=np.int32)
+		return np.bincount(flat, minlength=num_nodes).tolist()
 
 def ig_with_conversion(edge_index, num_nodes, verbose=True):
 	global total_count_time, total_ig_time, count_measurements
